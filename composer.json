@@ -1,0 +1,23 @@
+{
+  "name": "hihozhou/php-opencv-installer",
+  "description": "PHPOpenCV installer.",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "hihozhou",
+      "email": "hihozhou@gmail.com"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "CV\\Installer\\Console\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=7.0.0",
+    "symfony/console": "^4.3@dev",
+    "symfony/process": "^4.3@dev"
+  },
+  "minimum-stability": "dev"
+}
