@@ -15,6 +15,7 @@ class InstallCommand extends Command
 {
 
     const EXTENSION_NAME = 'opencv';
+    const OPENCV_VERSION = '4.0.0';
 
     /**
      * Configure the command options.
@@ -26,13 +27,19 @@ class InstallCommand extends Command
         $this
             ->setName('install')
             ->setDescription('Automatic installation of the php-opencv extension, including automatic installation of opencv (if no opencv is installed)')
-            ->addArgument('opencv_build_path', InputArgument::OPTIONAL, 'Automatically install the opencv directory', '/opt/opencv')
+//            ->addArgument('opencv_build_path', InputArgument::OPTIONAL, 'Automatically install the opencv directory', '/opt/opencv')
+//            ->addArgument('version', InputArgument::OPTIONAL, 'Automatically install the opencv directory', '/opt/opencv')
 //            ->addOption('dev', null, InputOption::VALUE_NONE, 'Installs the latest "development" release')
-//            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists')
+//            ->addOption('edition', 'e', InputOption::VALUE_REQUIRED, 'Automatically install the opencv directory', '/opt/opencv')//            ->addOption('php-opencv-version', 'pov', InputOption::VALUE_NONE, 'Specify the installed php-opencv version')
+            ->addOption('path', 'p', InputOption::VALUE_REQUIRED, 'Automatically install the opencv directory', '/opt/opencv')//            ->addOption('php-opencv-version', 'pov', InputOption::VALUE_NONE, 'Specify the installed php-opencv version')
+//            ->addOption('enable-contrib', null, InputOption::VALUE_REQUIRED, 'Automatically install the opencv directory', false)//            ->addOption('php-opencv-version', 'pov', InputOption::VALUE_NONE, 'Specify the installed php-opencv version')
         ;
     }
 
 
+    /**
+     * 检测安装环境
+     */
     protected function buildEnvDetection()
     {
         $process = new Process(['./opencv-install-environment-detection.sh']);//给予当前用户
@@ -44,32 +51,59 @@ class InstallCommand extends Command
     }
 
     /**
+     * 克隆OpenCV项目
+     * @author hihozhou
+     *
      * @param string $directory
      */
     protected function cloneOpenCV(string $directory)
     {
+        $version = self::OPENCV_VERSION;
         $opencvUrl = 'https://github.com/opencv/opencv.git';
-        $command = "sudo git clone {$opencvUrl} --depth 1";
+        $command = "sudo git clone {$opencvUrl} --branch {$version} --depth 1";
         $process = new Process($command, $directory, null, null, null);//给予当前用户
         $process->setTty(Process::isTtySupported());//检查TTY支持
         try {
             $process->mustRun();
         } catch (\Exception $e) {
-            throw new RuntimeException($process->getErrorOutput());
+            throw new RuntimeException('Aborting.');
         }
     }
 
 
+    /**
+     * 克隆opencv_contrib项目
+     * @author hihozhou
+     *
+     * @param string $directory
+     */
     protected function cloneOpenCVContrib(string $directory)
     {
+        $version = self::OPENCV_VERSION;
         $opencvContribUrl = 'https://github.com/opencv/opencv_contrib.git';
-        $command = "sudo git clone {$opencvContribUrl} --depth 1";
+        $command = "sudo git clone {$opencvContribUrl} --branch {$version} --depth 1";
         $process = new Process($command, $directory, null, null, null);//给予当前用户
         $process->setTty(Process::isTtySupported());//检查TTY支持
         try {
             $process->mustRun();
         } catch (\Exception $e) {
-            throw new RuntimeException($process->getErrorOutput());
+            throw new RuntimeException('Aborting.');
+        }
+    }
+
+
+    protected function findExistOpenCV(OutputInterface $output)
+    {
+        $output->writeln('Try to find the installed OpenCV on the system via pkg-config...');
+        $process = new Process('pkg-config --modversion opencv4');//给予当前用户
+        try {
+            $process->mustRun();
+            $existOpencvVersion = $process->getOutput();
+            $output->writeln('Found, opencv version is ' . $existOpencvVersion);
+
+        } catch (\Exception $e) {
+            //没有检测到opencv
+            $output->writeln('Did not find opencv installed on the system.');
         }
     }
 
@@ -93,8 +127,10 @@ class InstallCommand extends Command
             throw new RuntimeException('The OpenCV PHP extension is installed.');
         }
         $this->buildEnvDetection();
+        $this->findExistOpenCV($output);
+
         //创建目录
-        $directory = $input->getArgument('opencv_build_path');
+        $directory = $input->getOption('path');
         $output->writeln("Compile the directory of opencv with {$directory}.");
         if (!file_exists($directory)) {
             $output->writeln("Create {$directory} of the directory");
@@ -108,6 +144,15 @@ class InstallCommand extends Command
         }
         $this->cloneOpenCV($directory);
         $this->cloneOpenCVContrib($directory);
+        //
+        $commands = [
+            'cd opencv'
+        ];
+        $cloneOpenCVDirectory = $directory . '/opencv';
+        $commands = [
+            'mkdir build'
+        ];
+        $command = 'mkidr && cd build';
         //编译安装
         $output->writeln('<comment>Application ready! Build something amazing.</comment>');
     }
