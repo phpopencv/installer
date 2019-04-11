@@ -147,13 +147,13 @@ class InstallCommand extends Command
 
         }
         //克隆项目
-        $this->cloneOpenCV($directory);
-        $this->cloneOpenCVContrib($directory);
+//        $this->cloneOpenCV($directory);
+//        $this->cloneOpenCVContrib($directory);
 
         //编译安装
         $commands = [
             'cd opencv',
-            'mkdir build',
+            'sudo mkdir build',
             'cd build',
             'pwd'
         ];
