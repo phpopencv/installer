@@ -39,10 +39,13 @@ class InstallCommand extends Command
 
     /**
      * 检测安装环境
+     * @author hihozhou
+     * @throws RuntimeException
      */
     protected function buildEnvDetection()
     {
-        $process = new Process(['./opencv-install-environment-detection.sh']);//给予当前用户
+        $shellPath = __DIR__ . '/../opencv-install-environment-detection.sh';
+        $process = new Process([$shellPath]);//给予当前用户
         try {
             $process->mustRun();
         } catch (\Exception $e) {
