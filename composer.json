@@ -1,5 +1,5 @@
 {
-  "name": "hihozhou/php-opencv-installer",
+  "name": "phpopencv/installer",
   "description": "PHPOpenCV installer.",
   "type": "library",
   "license": "MIT",
@@ -19,5 +19,7 @@
     "symfony/console": "^4.3@dev",
     "symfony/process": "^4.3@dev"
   },
-  "minimum-stability": "dev"
+  "bin": [
+    "phpopencv"
+  ]
 }
