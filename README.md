@@ -1,4 +1,4 @@
-##PHPOpenCV Installer
+## PHPOpenCV Installer
 
 
 First, download the PHPOpenCV installer using Composer:

@@ -8,4 +8,5 @@ if (file_exists(__DIR__.'/../../autoload.php')) {
 }
 $app = new Symfony\Component\Console\Application('PHPOpenCV Installer', '1.0.0');
 $app->add(new CV\Installer\Console\InstallCommand);
+$app->add(new CV\Installer\Console\UninstallCommand);
 $app->run();

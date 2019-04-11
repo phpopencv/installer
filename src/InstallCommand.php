@@ -17,6 +17,8 @@ class InstallCommand extends Command
     const EXTENSION_NAME = 'opencv';
     const OPENCV_VERSION = '4.0.0';
 
+    protected $installInfo = [];
+
     /**
      * Configure the command options.
      *
@@ -45,7 +47,7 @@ class InstallCommand extends Command
     protected function buildEnvDetection()
     {
         $shellPath = __DIR__ . '/../opencv-install-environment-detection.sh';
-        $process = new Process([$shellPath]);//给予当前用户
+        $process = new Process([$shellPath]);//todo 给予当前用户
         try {
             $process->mustRun();
         } catch (\Exception $e) {
@@ -121,7 +123,6 @@ class InstallCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
 
-
         //判断是否已经安装opencv扩展
         if (extension_loaded(self::EXTENSION_NAME)) {
             $process = new Process(['php', '--ri', self::EXTENSION_NAME]);
@@ -145,18 +146,24 @@ class InstallCommand extends Command
             }
 
         }
+        //克隆项目
         $this->cloneOpenCV($directory);
         $this->cloneOpenCVContrib($directory);
-        //
+
+        //编译安装
         $commands = [
-            'cd opencv'
+            'cd opencv',
+            'mkdir build',
+            'cd build',
+            'pwd'
         ];
         $cloneOpenCVDirectory = $directory . '/opencv';
-        $commands = [
-            'mkdir build'
-        ];
-        $command = 'mkidr && cd build';
-        //编译安装
+        $process = new Process(implode(' && ', $commands), $directory, null, null, null);
+        $process->run(function ($type, $line) use ($output) {
+            $output->write($line);
+        });
+        //编译扩展
+
         $output->writeln('<comment>Application ready! Build something amazing.</comment>');
     }
 }
