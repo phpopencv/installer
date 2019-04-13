@@ -19,6 +19,10 @@ class InstallCommand extends Command
 
     protected $installInfo = [];
 
+    protected $isRoot = false;
+    protected $systemUsername;
+
+
     /**
      * Configure the command options.
      *
@@ -33,9 +37,25 @@ class InstallCommand extends Command
 //            ->addArgument('version', InputArgument::OPTIONAL, 'Automatically install the opencv directory', '/opt/opencv')
 //            ->addOption('dev', null, InputOption::VALUE_NONE, 'Installs the latest "development" release')
 //            ->addOption('edition', 'e', InputOption::VALUE_REQUIRED, 'Automatically install the opencv directory', '/opt/opencv')//            ->addOption('php-opencv-version', 'pov', InputOption::VALUE_NONE, 'Specify the installed php-opencv version')
-            ->addOption('path', 'p', InputOption::VALUE_REQUIRED, 'Automatically install the opencv directory', '/opt/opencv')//            ->addOption('php-opencv-version', 'pov', InputOption::VALUE_NONE, 'Specify the installed php-opencv version')
+            ->addOption('path', 'p', InputOption::VALUE_REQUIRED, 'Automatically install the opencv directory', '/opt/phpopencv')//            ->addOption('php-opencv-version', 'pov', InputOption::VALUE_NONE, 'Specify the installed php-opencv version')
 //            ->addOption('enable-contrib', null, InputOption::VALUE_REQUIRED, 'Automatically install the opencv directory', false)//            ->addOption('php-opencv-version', 'pov', InputOption::VALUE_NONE, 'Specify the installed php-opencv version')
         ;
+    }
+
+
+    protected function checkIsRoot()
+    {
+        $process = new Process(['whoami']);
+        try {
+            $process->mustRun();
+            $username = str_replace(PHP_EOL, '', $process->getOutput());
+            if ($username == 'root') {
+                $this->isRoot = true;
+            }
+            $this->systemUsername = $username;
+        } catch (\Exception $e) {
+            throw new RuntimeException($process->getErrorOutput());
+        }
     }
 
 
@@ -65,7 +85,7 @@ class InstallCommand extends Command
     {
         $version = self::OPENCV_VERSION;
         $opencvUrl = 'https://github.com/opencv/opencv.git';
-        $command = "sudo git clone {$opencvUrl} --branch {$version} --depth 1";
+        $command = "git clone {$opencvUrl} --branch {$version} --depth 1";
         $process = new Process($command, $directory, null, null, null);//给予当前用户
         $process->setTty(Process::isTtySupported());//检查TTY支持
         try {
@@ -86,7 +106,7 @@ class InstallCommand extends Command
     {
         $version = self::OPENCV_VERSION;
         $opencvContribUrl = 'https://github.com/opencv/opencv_contrib.git';
-        $command = "sudo git clone {$opencvContribUrl} --branch {$version} --depth 1";
+        $command = "git clone {$opencvContribUrl} --branch {$version} --depth 1";
         $process = new Process($command, $directory, null, null, null);//给予当前用户
         $process->setTty(Process::isTtySupported());//检查TTY支持
         try {
@@ -112,6 +132,97 @@ class InstallCommand extends Command
         }
     }
 
+
+    protected function checkExtensionIsInstall(OutputInterface $output)
+    {
+        //判断是否已经安装opencv扩展
+        if (extension_loaded(self::EXTENSION_NAME)) {
+            $process = new Process(['php', '--ri', self::EXTENSION_NAME]);
+            $process->mustRun();
+            $output->writeln($process->getOutput());
+            throw new RuntimeException('The OpenCV PHP extension is installed.');
+        }
+    }
+
+    protected function createBaseDir($directory, OutputInterface $output)
+    {
+
+        //提示安装目录
+        $output->writeln("Compile the directory of opencv with {$directory}.");
+        //
+        if (!file_exists($directory)) {
+            $output->writeln("Create {$directory} of the directory");
+            if ($this->isRoot) {
+                $process = new Process(['mkdir', $directory]);
+            } else {
+                $process = new Process(['sudo', 'mkdir', $directory]);
+            }
+            try {
+                $process->mustRun();
+            } catch (\Exception $e) {
+                throw new RuntimeException($process->getErrorOutput());
+            }
+
+        }
+
+        //如果不是root用户，则赋予目录当前用户
+        if (!$this->isRoot) {
+            try {
+                $groupsCommand = 'groups ' . $this->systemUsername;
+                $process = new Process($groupsCommand);
+                $process->mustRun();
+                $str = str_replace(PHP_EOL, '', $process->getOutput());
+                if (substr_count($str, $this->systemUsername) >= 2) {
+                    $chownCommand = 'sudo chown -R ' . $this->systemUsername . ':' . $this->systemUsername . ' ' . $directory;
+                } else {
+                    $chownCommand = 'sudo chown -R ' . $this->systemUsername . ' ' . $directory;
+                }
+                $process = new Process($chownCommand);
+                $process->mustRun();
+            } catch (\Exception $e) {
+                throw new RuntimeException($process->getErrorOutput());
+            }
+            //给予当前用户
+        }
+    }
+
+
+    public function buildOpenCV($directory)
+    {
+        //编译安装
+        $commands = [
+            'cd opencv',
+            'mkdir build',
+            'cd build',
+            'pwd',
+            'cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_INSTALL_PREFIX=/usr/local \
+-D WITH_TBB=ON \
+-D WITH_V4L=ON \
+-D INSTALL_C_EXAMPLES=OFF \
+-D INSTALL_PYTHON_EXAMPLES=OFF \
+-D BUILD_EXAMPLES=OFF \
+-D BUILD_JAVA=OFF \
+-D BUILD_TESTS=OFF \
+-D WITH_QT=ON \
+-D WITH_OPENGL=ON \
+-D BUILD_opencv_world=ON \
+-D OPENCV_PYTHON_SKIP_DETECTION=ON \
+-D OPENCV_GENERATE_PKGCONFIG=ON \
+-D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules ..\
+&& make\
+&& sudo make install'
+
+        ];
+        $process = new Process(implode(' && ', $commands), $directory, null, null, null);
+        $process->setTty(Process::isTtySupported());//检查TTY支持
+        try {
+            $process->mustRun();
+        } catch (\Exception $e) {
+            throw new RuntimeException('Aborting.');
+        }
+    }
+
     /**
      * Execute the command.
      *
@@ -122,47 +233,21 @@ class InstallCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-
-        //判断是否已经安装opencv扩展
-        if (extension_loaded(self::EXTENSION_NAME)) {
-            $process = new Process(['php', '--ri', self::EXTENSION_NAME]);
-            $process->mustRun();
-            $output->writeln($process->getOutput());
-            throw new RuntimeException('The OpenCV PHP extension is installed.');
-        }
+        $this->checkIsRoot();
+        $this->checkExtensionIsInstall($output);
         $this->buildEnvDetection();
         $this->findExistOpenCV($output);
-
         //创建目录
         $directory = $input->getOption('path');
-        $output->writeln("Compile the directory of opencv with {$directory}.");
-        if (!file_exists($directory)) {
-            $output->writeln("Create {$directory} of the directory");
-            $process = new Process(['sudo', 'mkdir', $directory]);//给予当前用户
-            try {
-                $process->mustRun();
-            } catch (\Exception $e) {
-                throw new RuntimeException($process->getErrorOutput());
-            }
 
-        }
+        $this->createBaseDir($directory, $output);
         //克隆项目
-//        $this->cloneOpenCV($directory);
-//        $this->cloneOpenCVContrib($directory);
+        $this->cloneOpenCV($directory);
+        $this->cloneOpenCVContrib($directory);
 
-        //编译安装
-        $commands = [
-            'cd opencv',
-            'sudo mkdir build',
-            'cd build',
-            'pwd'
-        ];
-        $cloneOpenCVDirectory = $directory . '/opencv';
-        $process = new Process(implode(' && ', $commands), $directory, null, null, null);
-        $process->run(function ($type, $line) use ($output) {
-            $output->write($line);
-        });
         //编译扩展
+        $this->buildOpenCV($directory);
+
 
         $output->writeln('<comment>Application ready! Build something amazing.</comment>');
     }
