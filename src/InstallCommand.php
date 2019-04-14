@@ -187,6 +187,12 @@ class InstallCommand extends Command
     }
 
 
+    /**
+     * 编译安装opencv
+     * @author hihozhou
+     *
+     * @param $directory
+     */
     public function buildOpenCV($directory)
     {
         //编译安装
@@ -194,7 +200,6 @@ class InstallCommand extends Command
             'cd opencv',
             'mkdir build',
             'cd build',
-            'pwd',
             'cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D CMAKE_INSTALL_PREFIX=/usr/local \
 -D WITH_TBB=ON \
@@ -211,13 +216,30 @@ class InstallCommand extends Command
 -D OPENCV_GENERATE_PKGCONFIG=ON \
 -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules ..\
 && make\
-&& sudo make install'
+&& sudo make install',
+            'sh -c \'echo "/usr/local/lib" > /etc/ld.so.conf.d/opencv.conf\''
 
         ];
         $process = new Process(implode(' && ', $commands), $directory, null, null, null);
         $process->setTty(Process::isTtySupported());//检查TTY支持
         try {
             $process->mustRun();
+        } catch (\Exception $e) {
+            throw new RuntimeException('Aborting.');
+        }
+    }
+
+    protected function buildPHPOpenCV($directory)
+    {
+        $phpOpencvUrl = 'https://github.com/hihozhou/php-opencv.git';
+        $command = "git clone {$phpOpencvUrl} --branch master --depth 1";
+        $process = new Process($command, $directory, null, null, null);
+        $process->setTty(Process::isTtySupported());//检查TTY支持
+        try {
+            $process->mustRun();
+
+            //
+
         } catch (\Exception $e) {
             throw new RuntimeException('Aborting.');
         }
@@ -247,7 +269,8 @@ class InstallCommand extends Command
 
         //编译扩展
         $this->buildOpenCV($directory);
-
+        //编译phpopencv扩展
+        $this->buildPHPOpenCV($directory);
 
         $output->writeln('<comment>Application ready! Build something amazing.</comment>');
     }
