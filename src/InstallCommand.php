@@ -83,6 +83,12 @@ class InstallCommand extends Command
      */
     protected function cloneOpenCV(string $directory)
     {
+
+        //检测OpenCV是否已经存在，如果已经存在则过滤
+        if (file_exists($directory . '/opencv')) {
+            //todo 切回到某个版本
+            return;
+        }
         $version = self::OPENCV_VERSION;
         $opencvUrl = 'https://github.com/opencv/opencv.git';
         $command = "git clone {$opencvUrl} --branch {$version} --depth 1";
@@ -104,6 +110,12 @@ class InstallCommand extends Command
      */
     protected function cloneOpenCVContrib(string $directory)
     {
+
+        //检测OpenCV是否已经存在，如果已经存在则过滤
+        if (file_exists($directory . '/opencv_contrib')) {
+            //todo 切回到某个版本
+            return;
+        }
         $version = self::OPENCV_VERSION;
         $opencvContribUrl = 'https://github.com/opencv/opencv_contrib.git';
         $command = "git clone {$opencvContribUrl} --branch {$version} --depth 1";
@@ -117,6 +129,12 @@ class InstallCommand extends Command
     }
 
 
+    /**
+     * 检测OpenCV是否已经安装
+     * @author hihozhou
+     *
+     * @param OutputInterface $output
+     */
     protected function findExistOpenCV(OutputInterface $output)
     {
         $output->writeln('Try to find the installed OpenCV on the system via pkg-config...');
@@ -125,10 +143,12 @@ class InstallCommand extends Command
             $process->mustRun();
             $existOpencvVersion = $process->getOutput();
             $output->writeln('Found, opencv version is ' . $existOpencvVersion);
+            return true;
 
         } catch (\Exception $e) {
             //没有检测到opencv
             $output->writeln('Did not find opencv installed on the system.');
+            return false;
         }
     }
 
@@ -195,30 +215,38 @@ class InstallCommand extends Command
      */
     public function buildOpenCV($directory)
     {
+        if (!file_exists($directory)) {
+            $process = new Process(['mkdir', 'build'], $directory . '/opencv');
+            try {
+                $process->mustRun();
+            } catch (\Exception $e) {
+                throw new RuntimeException($process->getErrorOutput());
+            }
+        }
+
+        $cmakeCommand = 'cmake -D CMAKE_BUILD_TYPE=RELEASE';
+        $cmakeCommand .= ' -D CMAKE_INSTALL_PREFIX=/usr/local';
+        $cmakeCommand .= ' -D WITH_TBB=ON';
+        $cmakeCommand .= ' -D WITH_V4L=ON';
+        $cmakeCommand .= ' -D INSTALL_C_EXAMPLES=OFF';
+        $cmakeCommand .= ' -D INSTALL_PYTHON_EXAMPLES=OFF';
+        $cmakeCommand .= ' -D BUILD_EXAMPLES=OFF';
+        $cmakeCommand .= ' -D BUILD_JAVA=OFF';
+        $cmakeCommand .= ' -D BUILD_TESTS=OFF';
+        $cmakeCommand .= ' -D WITH_QT=ON';
+        $cmakeCommand .= ' -D WITH_OPENGL=ON';
+        $cmakeCommand .= ' -D OPENCV_PYTHON_SKIP_DETECTION=ON';
+        $cmakeCommand .= ' -D OPENCV_GENERATE_PKGCONFIG=ON';
+        $cmakeCommand .= ' -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules';
+        $cmakeCommand .= ' ..';
         //编译安装
         $commands = [
-            'cd opencv',
-            'mkdir build',
-            'cd build',
-            'cmake -D CMAKE_BUILD_TYPE=RELEASE \
--D CMAKE_INSTALL_PREFIX=/usr/local \
--D WITH_TBB=ON \
--D WITH_V4L=ON \
--D INSTALL_C_EXAMPLES=OFF \
--D INSTALL_PYTHON_EXAMPLES=OFF \
--D BUILD_EXAMPLES=OFF \
--D BUILD_JAVA=OFF \
--D BUILD_TESTS=OFF \
--D WITH_QT=ON \
--D WITH_OPENGL=ON \
--D BUILD_opencv_world=ON \
--D OPENCV_PYTHON_SKIP_DETECTION=ON \
--D OPENCV_GENERATE_PKGCONFIG=ON \
--D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules ..\
-&& make\
-&& sudo make install',
-            'sh -c \'echo "/usr/local/lib" > /etc/ld.so.conf.d/opencv.conf\''
-
+            'cd opencv/build',
+            $cmakeCommand,
+            'make',
+            'sudo make install',
+            'sudo sh -c \'echo "/usr/local/lib" > /etc/ld.so.conf.d/opencv.conf\'',
+            'sudo ldconfig'
         ];
         $process = new Process(implode(' && ', $commands), $directory, null, null, null);
         $process->setTty(Process::isTtySupported());//检查TTY支持
@@ -231,14 +259,30 @@ class InstallCommand extends Command
 
     protected function buildPHPOpenCV($directory)
     {
-        $phpOpencvUrl = 'https://github.com/hihozhou/php-opencv.git';
-        $command = "git clone {$phpOpencvUrl} --branch master --depth 1";
-        $process = new Process($command, $directory, null, null, null);
-        $process->setTty(Process::isTtySupported());//检查TTY支持
-        try {
-            $process->mustRun();
 
-            //
+        if (!file_exists($directory . '/php-opencv')) {
+            $phpOpencvUrl = 'https://github.com/hihozhou/php-opencv.git';
+            $command = "git clone {$phpOpencvUrl} --branch master --depth 1";
+            $process = new Process($command, $directory, null, null, null);
+            $process->setTty(Process::isTtySupported());//检查TTY支持
+            try {
+                $process->mustRun();
+            } catch (\Exception $e) {
+                throw new RuntimeException('Aborting.');
+            }
+        }
+
+        try {
+            $commands = [
+                'cd php-opencv',
+                'phpize',//todo
+                './configure --with-php-config=/usr/bin/php-config',//todo
+                'make',
+                'sudo make install'
+            ];
+            $process = new Process(implode(' && ', $commands), $directory, null, null, null);
+            $process->setTty(Process::isTtySupported());//检查TTY支持
+            $process->mustRun();
 
         } catch (\Exception $e) {
             throw new RuntimeException('Aborting.');
@@ -258,17 +302,20 @@ class InstallCommand extends Command
         $this->checkIsRoot();
         $this->checkExtensionIsInstall($output);
         $this->buildEnvDetection();
-        $this->findExistOpenCV($output);
         //创建目录
         $directory = $input->getOption('path');
-
         $this->createBaseDir($directory, $output);
-        //克隆项目
-        $this->cloneOpenCV($directory);
-        $this->cloneOpenCVContrib($directory);
 
-        //编译扩展
-        $this->buildOpenCV($directory);
+        if (!$this->findExistOpenCV($output)) {
+
+            //克隆项目
+            $this->cloneOpenCV($directory);
+            $this->cloneOpenCVContrib($directory);
+
+            //编译扩展
+            $this->buildOpenCV($directory);
+        }
+
         //编译phpopencv扩展
         $this->buildPHPOpenCV($directory);
 
