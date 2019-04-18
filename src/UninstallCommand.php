@@ -42,7 +42,8 @@ class UninstallCommand extends Command
         //卸载扩展
         //cd /opt/opencv/opencv/build
         //sudo make uninstall
-        //sudo find . -name "*opencv*" | xargs sudo rm -rf
+        //sudo find . -name "*opencv*" | xargs sudo rm -rf\
+        //通过pkg-config php-config --extension-dir 删除
 
     }
 }

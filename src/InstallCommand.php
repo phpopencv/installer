@@ -299,6 +299,24 @@ class InstallCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
+//        'enable sockets supports? [no] : ';
+        //查找php配置
+        try {
+            $process = new Process('which phpize');
+            $process->mustRun();
+            $phpizePath = str_replace(PHP_EOL, '', $process->getOutput());
+            $process = new Process('which php-config');
+            $process->mustRun();
+            $phpConfigPath = str_replace(PHP_EOL, '', $process->getOutput());
+
+        } catch (\Exception $e) {
+            throw new RuntimeException($process->getErrorOutput());
+        }
+        exit;
+        $output->writeln('<comment>Application ready! Build something amazing.</comment>');
+        $output->write('<comment>Application ready! Build something amazing.</comment>');
+        $this->userInput();
+        exit;
         $this->checkIsRoot();
         $this->checkExtensionIsInstall($output);
         $this->buildEnvDetection();
@@ -320,5 +338,17 @@ class InstallCommand extends Command
         $this->buildPHPOpenCV($directory);
 
         $output->writeln('<comment>Application ready! Build something amazing.</comment>');
+    }
+
+
+    /**
+     * 用户输入
+     * @author hihozhou
+     * @return string
+     */
+    protected function userInput()
+    {
+        $input = trim(fgets(STDIN));
+        return $input;
     }
 }
