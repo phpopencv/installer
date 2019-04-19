@@ -39,3 +39,12 @@ Once installed, the PHPOpenCV new command will create a fresh PHPOpenCV installa
 ```bash
 phpopencv install
 ```
+
+
+## 操作系统支持
+
+
+
+| <img src="/images/ubuntu.png" width="48px" height="48px" alt="Chrome logo"> | <img src="/images/centos.jpg" width="48px" height="48px" alt="Edge logo"> |
+|:---:|:---:|
+| 16+ ✔ | 7+ ✔ |
