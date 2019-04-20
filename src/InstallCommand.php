@@ -164,6 +164,13 @@ class InstallCommand extends Command
         }
     }
 
+    /**
+     * 创建根目录
+     * @author hihozhou
+     *
+     * @param                 $directory
+     * @param OutputInterface $output
+     */
     protected function createBaseDir($directory, OutputInterface $output)
     {
 
@@ -257,7 +264,16 @@ class InstallCommand extends Command
         }
     }
 
-    protected function buildPHPOpenCV($directory)
+
+    /**
+     * 编译安装phpopencv 扩展
+     * @author hihozhou
+     *
+     * @param $directory
+     * @param $phpizePath
+     * @param $phpConfigPath
+     */
+    protected function buildPHPOpenCV($directory, $phpizePath, $phpConfigPath)
     {
 
         if (!file_exists($directory . '/php-opencv')) {
@@ -275,8 +291,9 @@ class InstallCommand extends Command
         try {
             $commands = [
                 'cd php-opencv',
-                'phpize',//todo
-                './configure --with-php-config=/usr/bin/php-config',//todo
+                $phpizePath,//todo
+                './configure --with-php-config=' . $phpConfigPath,//todo
+                'make clean',
                 'make',
                 'sudo make install'
             ];
@@ -289,6 +306,34 @@ class InstallCommand extends Command
         }
     }
 
+
+    /**
+     * 获取pecl
+     * @author hihozhou
+     *
+     * @param OutputInterface $output
+     */
+    protected function getPecl(OutputInterface $output)
+    {
+        //尝试通过执行的php寻找对应的pecl
+        $output->writeln('Try to get the PECL corresponding to the execution script for PHP...');
+        $usePHPBinPath = str_replace(strrchr(PHP_BINARY, '/'), '', PHP_BINARY);
+        $peclBin = $usePHPBinPath . '/pecl';
+        if (!file_exists($peclBin)) {
+            $output->writeln('Cannot find the corresponding PECL.');
+            $output->write('Please enter the path of PECL : ');
+            //未找到则需要用户输入确认
+            $userInput = $this->userInput();
+            if (!file_exists($userInput)) {
+                throw new RuntimeException('No established PECL program found');
+            }
+            $peclBin = $userInput;
+        } else {
+            $output->writeln('<info>Find the corresponding pecl script : ' . $peclBin . '</info>');
+        }
+        return $peclBin;
+    }
+
     /**
      * Execute the command.
      *
@@ -299,24 +344,32 @@ class InstallCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-//        'enable sockets supports? [no] : ';
-        //查找php配置
-        try {
-            $process = new Process('which phpize');
-            $process->mustRun();
-            $phpizePath = str_replace(PHP_EOL, '', $process->getOutput());
-            $process = new Process('which php-config');
-            $process->mustRun();
-            $phpConfigPath = str_replace(PHP_EOL, '', $process->getOutput());
 
-        } catch (\Exception $e) {
-            throw new RuntimeException($process->getErrorOutput());
+        $peclBin = $this->getPecl($output);
+        //todo 判断找到的pecl对应的php和执行的php是否相同
+        //pecl config-get bin_dir ,找到bin目录
+        $process = new Process($peclBin . ' config-get bin_dir');
+        $process->mustRun();
+        $bindDir = str_replace(PHP_EOL, '', $process->getOutput());
+
+
+        //phpize
+        $phpizeBin = $bindDir . '/phpize';
+        if (!file_exists($phpizeBin)) {
+            throw new RuntimeException('未找到执行php对应的phpize');
         }
-        exit;
-        $output->writeln('<comment>Application ready! Build something amazing.</comment>');
-        $output->write('<comment>Application ready! Build something amazing.</comment>');
-        $this->userInput();
-        exit;
+
+        //找到php-config
+        $phpConfigBin = $bindDir . '/php-config';
+        if (!file_exists($phpConfigBin)) {
+            throw new RuntimeException('未找到执行php对应的php-config');
+        }
+        //pecl config-get ext_dir，找到扩展so文件存放轮径
+        $process = new Process($peclBin . ' config-get ext_dir');
+        $process->mustRun();
+        $extDir = str_replace(PHP_EOL, '', $process->getOutput());
+
+
         $this->checkIsRoot();
         $this->checkExtensionIsInstall($output);
         $this->buildEnvDetection();
@@ -335,9 +388,11 @@ class InstallCommand extends Command
         }
 
         //编译phpopencv扩展
-        $this->buildPHPOpenCV($directory);
+        $this->buildPHPOpenCV($directory, $phpizeBin, $phpConfigBin);
 
-        $output->writeln('<comment>Application ready! Build something amazing.</comment>');
+        $output->writeln('configuration option "php_ini" is not set to php.ini location');
+        $output->writeln('You should add "extension=opencv.so" to php.ini');
+        $output->writeln('<comment>PHPOpenCV ready! Build something amazing.</comment>');
     }
 
 
