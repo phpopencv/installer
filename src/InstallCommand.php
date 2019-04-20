@@ -251,9 +251,9 @@ class InstallCommand extends Command
             'cd opencv/build',
             $cmakeCommand,
             'make',
-            $this->isRoot ? '' : 'sudo ' . 'make install',
-            $this->isRoot ? '' : 'sudo ' . 'sh -c \'echo "/usr/local/lib" > /etc/ld.so.conf.d/opencv.conf\'',
-            $this->isRoot ? '' : 'sudo ' . 'ldconfig'
+            ($this->isRoot ? '' : 'sudo ') . 'make install',
+            ($this->isRoot ? '' : 'sudo ') . 'sh -c \'echo "/usr/local/lib" > /etc/ld.so.conf.d/opencv.conf\'',
+            ($this->isRoot ? '' : 'sudo ') . 'ldconfig'
         ];
         $process = new Process(implode(' && ', $commands), $directory, null, null, null);
         $process->setTty(Process::isTtySupported());//检查TTY支持
@@ -295,7 +295,7 @@ class InstallCommand extends Command
                 './configure --with-php-config=' . $phpConfigPath,//todo
                 'make clean',
                 'make',
-                $this->isRoot ? '' : 'sudo ' . 'make install'
+                ($this->isRoot ? '' : 'sudo ') . 'make install'
             ];
             $process = new Process(implode(' && ', $commands), $directory, null, null, null);
             $process->setTty(Process::isTtySupported());//检查TTY支持
