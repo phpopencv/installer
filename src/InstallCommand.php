@@ -222,8 +222,9 @@ class InstallCommand extends Command
      */
     public function buildOpenCV($directory)
     {
-        if (!file_exists($directory)) {
-            $process = new Process(['mkdir', 'build'], $directory . '/opencv');
+        $releaseDir = 'build';
+        if (!file_exists($directory . '/opencv/' . $releaseDir)) {
+            $process = new Process(['mkdir', $releaseDir], $directory . '/opencv');
             try {
                 $process->mustRun();
             } catch (\Exception $e) {
