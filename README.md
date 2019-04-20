@@ -34,7 +34,7 @@ source /etc/profile
 
 
 
-Once installed, the PHPOpenCV new command will create a fresh PHPOpenCV installation in the directory you specify. For instance, laravel new blog will create a directory named blog containing a fresh Laravel installation with all of Laravel's dependencies already installed:
+Use:
 
 ```bash
 phpopencv install
