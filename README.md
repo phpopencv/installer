@@ -1,5 +1,22 @@
-## PHPOpenCV Installer
+# PHPOpenCV Installer
 
+PHPOpenCV Installer是一个简易安装phpopencv扩展，自动检测编译安装opencv并编译php扩展
+
+## 目录
+
+
+
+
+## 环境要求
+
+- cmake3.5+(编译安装opencv时候需要)
+- pkg-config 
+- Qt5+(编译安装opencv时候需要)
+- php7+
+- pecl
+
+
+## 使用
 
 First, download the PHPOpenCV installer using Composer:
 
@@ -48,3 +65,5 @@ phpopencv install
 | <img src="/images/ubuntu.png" width="48px" height="48px" alt="Chrome logo"> | <img src="/images/centos.jpg" width="48px" height="48px" alt="Edge logo"> |
 |:---:|:---:|
 | 16+ ✔ | 7+ ✔ |
+
+

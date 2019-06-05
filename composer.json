@@ -12,7 +12,10 @@
   "autoload": {
     "psr-4": {
       "CV\\Installer\\Console\\": "src/"
-    }
+    },
+    "files": [
+      "src/helpers.php"
+    ]
   },
   "require": {
     "php": ">=7.0.0",

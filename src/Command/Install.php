@@ -1,7 +1,8 @@
 <?php
 
-namespace CV\Installer\Console;
+namespace CV\Installer\Console\Command;
 
+use CV\Installer\Console\CommonTrait;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Input\InputArgument;
@@ -11,7 +12,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
-class InstallCommand extends Command
+class Install extends Command
 {
 
     const EXTENSION_NAME = 'opencv';
@@ -19,9 +20,9 @@ class InstallCommand extends Command
 
     protected $installInfo = [];
 
-    protected $isRoot = false;
-    protected $systemUsername;
 
+
+    use CommonTrait;
 
     /**
      * Configure the command options.
@@ -43,22 +44,6 @@ class InstallCommand extends Command
     }
 
 
-    protected function checkIsRoot()
-    {
-        $process = new Process(['whoami']);
-        try {
-            $process->mustRun();
-            $username = str_replace(PHP_EOL, '', $process->getOutput());
-            if ($username == 'root') {
-                $this->isRoot = true;
-            }
-            $this->systemUsername = $username;
-        } catch (\Exception $e) {
-            throw new RuntimeException($process->getErrorOutput());
-        }
-    }
-
-
     /**
      * 检测安装环境
      * @author hihozhou
@@ -66,7 +51,7 @@ class InstallCommand extends Command
      */
     protected function buildEnvDetection()
     {
-        $shellPath = __DIR__ . '/../opencv-install-environment-detection.sh';
+        $shellPath = dirname(__DIR__) . '/../opencv-install-environment-detection.sh';
         $process = new Process([$shellPath]);//todo 给予当前用户
         try {
             $process->mustRun();
