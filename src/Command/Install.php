@@ -11,6 +11,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
+use function process;
 
 class Install extends Command
 {
@@ -51,29 +52,13 @@ class Install extends Command
     {
         if (file_exists('/usr/bin/yum')) {
             $pm = 'yum';
-            $process = new Process('command -v lsb_release >/dev/null 2>&1 || { yum -y install redhat-lsb-core; }');//todo 给予当前用户
-            try {
-                $process->mustRun();
-            } catch (\Exception $e) {
-                throw new RuntimeException($process->getErrorOutput());
-            }
+            process('command -v lsb_release >/dev/null 2>&1 || { yum -y install redhat-lsb-core; }');
         } else if (file_exists('/usr/bin/apt-get')) {
             $pm = 'apt-get';
-            $process = new Process('command -v lsb_release >/dev/null 2>&1 || { yum -y install redhat-lsb-core; }');//todo 给予当前用户
-            try {
-                $process->mustRun();
-            } catch (\Exception $e) {
-                throw new RuntimeException($process->getErrorOutput());
-            }
+            process('command -v lsb_release >/dev/null 2>&1 || { yum -y install redhat-lsb-core; }');
         }
+        process('command -v lsb_release >/dev/null 2>&1 || { echo >&2 "Fail to use lsb_release!"; exit 1; }');
         //
-        $process = new Process('command -v lsb_release >/dev/null 2>&1 || { echo >&2 "Fail to use lsb_release!"; exit 1; }');
-        try {
-            $process->mustRun();
-        } catch (\Exception $e) {
-            throw new RuntimeException($process->getErrorOutput());
-        }
-
 
 //        if (file_exists('/etc/redhat-release')) {
 //            //RedHat,Centos
@@ -101,8 +86,7 @@ class Install extends Command
             //检测系统
             //如果是ubuntu，直接apt-get
             //如果是centos则安装编译安装cmake
-            $process = new Process('sudo apt-get install -y cmake');
-            $process->mustRun();
+            process('sudo apt-get install -y cmake');
         }
 
     }
