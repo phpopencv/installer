@@ -21,7 +21,6 @@ class Install extends Command
     protected $installInfo = [];
 
 
-
     use CommonTrait;
 
     /**
@@ -42,6 +41,74 @@ class Install extends Command
 //            ->addOption('enable-contrib', null, InputOption::VALUE_REQUIRED, 'Automatically install the opencv directory', false)//            ->addOption('php-opencv-version', 'pov', InputOption::VALUE_NONE, 'Specify the installed php-opencv version')
         ;
     }
+
+
+    /**
+     * 检测系统
+     * @author hihozhou
+     */
+    protected function checkOs()
+    {
+        if (file_exists('/usr/bin/yum')) {
+            $pm = 'yum';
+            $process = new Process('command -v lsb_release >/dev/null 2>&1 || { yum -y install redhat-lsb-core; }');//todo 给予当前用户
+            try {
+                $process->mustRun();
+            } catch (\Exception $e) {
+                throw new RuntimeException($process->getErrorOutput());
+            }
+        } else if (file_exists('/usr/bin/apt-get')) {
+            $pm = 'apt-get';
+            $process = new Process('command -v lsb_release >/dev/null 2>&1 || { yum -y install redhat-lsb-core; }');//todo 给予当前用户
+            try {
+                $process->mustRun();
+            } catch (\Exception $e) {
+                throw new RuntimeException($process->getErrorOutput());
+            }
+        }
+        //
+        $process = new Process('command -v lsb_release >/dev/null 2>&1 || { echo >&2 "Fail to use lsb_release!"; exit 1; }');
+        try {
+            $process->mustRun();
+        } catch (\Exception $e) {
+            throw new RuntimeException($process->getErrorOutput());
+        }
+
+
+//        if (file_exists('/etc/redhat-release')) {
+//            //RedHat,Centos
+//            $OS = 'CentOS';
+//        }elseif (){}
+//        else {
+//            throw new RuntimeException('Does not support this OS, Please contact the author!');
+//        }
+    }
+
+
+    //todo 检测并安装cmake
+    protected function checkCmakeOrInstall(OutputInterface $output)
+    {
+
+        $checkCommad = 'command -v cmake1 >/dev/null 2>&1 || { echo >&2 "Compiling OpenCV requires cmake, but no cmake was detected for system installation. Aborting."; exit 1; }';
+        $process = new Process($checkCommad);//todo 给予当前用户
+        try {
+            $process->mustRun();
+        } catch (\Exception $e) {
+
+            $output->writeln('Try install cmake.');
+//            throw new RuntimeException($process->getErrorOutput());
+            //安装cmake
+            //检测系统
+            //如果是ubuntu，直接apt-get
+            //如果是centos则安装编译安装cmake
+            $process = new Process('sudo apt-get install -y cmake');
+            $process->mustRun();
+        }
+
+    }
+
+
+    //todo 检测并安装pkg-config
 
 
     /**
@@ -331,6 +398,7 @@ class Install extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
 
+        $this->checkOs();
         $peclBin = $this->getPecl($output);
         //todo 判断找到的pecl对应的php和执行的php是否相同
         //pecl config-get bin_dir ,找到bin目录
@@ -358,6 +426,9 @@ class Install extends Command
 
         $this->checkIsRoot();
         $this->checkExtensionIsInstall($output);
+
+        $this->checkCmakeOrInstall($output);
+
         $this->buildEnvDetection();
         //创建目录
         $directory = $input->getOption('path');
